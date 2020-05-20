@@ -342,7 +342,7 @@ class RandomCrop(TransformGen):
             ch, cw = crop_size + np.random.rand(2) * (1 - crop_size)
             return int(h * ch + 0.5), int(w * cw + 0.5)
         elif self.crop_type == "absolute":
-            return self.crop_size
+            return (min(self.crop_size[0], h), min(self.crop_size[1], w))
         else:
             NotImplementedError("Unknown crop type {}".format(self.crop_type))
 
@@ -502,7 +502,7 @@ class RandomLighting(TransformGen):
 
 def apply_transform_gens(transform_gens, img):
     """
-    Apply a list of :class:`TransformGen` on the input image, and
+    Apply a list of :class:`TransformGen` or :class:`Transform` on the input image, and
     returns the transformed image and a list of transforms.
 
     We cannot simply create and return all transforms without
@@ -510,7 +510,7 @@ def apply_transform_gens(transform_gens, img):
     need the output of the previous one.
 
     Args:
-        transform_gens (list): list of :class:`TransformGen` instance to
+        transform_gens (list): list of :class:`TransformGen` or :class:`Transform` instance to
             be applied.
         img (ndarray): uint8 or floating point images with 1 or 3 channels.
 
@@ -519,13 +519,13 @@ def apply_transform_gens(transform_gens, img):
         TransformList: contain the transforms that's used.
     """
     for g in transform_gens:
-        assert isinstance(g, TransformGen), g
+        assert isinstance(g, (Transform, TransformGen)), g
 
     check_dtype(img)
 
     tfms = []
     for g in transform_gens:
-        tfm = g.get_transform(img)
+        tfm = g.get_transform(img) if isinstance(g, TransformGen) else g
         assert isinstance(
             tfm, Transform
         ), "TransformGen {} must return an instance of Transform! Got {} instead".format(g, tfm)
